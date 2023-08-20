@@ -1,0 +1,35 @@
+PAL
+
+(Required)
+<memory offset="0x0016eacc" value="4be95534" />
+<memory offset="0x00004000" valuefile="/mod_dir/Loader_P.bin" />
+<file external="/mod_dir/Payload_P.bin" disc="/bin/Payload_P.bin" create="true" />
+
+(Optional)
+<file external="/mod_dir/lecode-PAL.bin" disc="/rel/lecode-PAL.bin" create="true" />
+<file external="/mod_dir/RMCP01.gct" disc="/codes/RMCP01.gct" create="true" />
+
+
+USA
+
+(Required)
+<memory offset="0x0016ea2c" value="4be955d4" />
+<memory offset="0x00004000" valuefile="/mod_dir/Loader_E.bin" />
+<file external="/mod_dir/Payload_E.bin" disc="/bin/Payload_E.bin" create="true" />
+
+(Optional)
+<file external="/mod_dir/lecode-USA.bin" disc="/rel/lecode-USA.bin" create="true" />
+<file external="/mod_dir/RMCE01.gct" disc="/codes/RMCE01.gct" create="true" />
+
+
+
+JPN
+
+(Required)
+<memory offset="0x0016e9ec" value="4be95614" />
+<memory offset="0x00004000" valuefile="/mod_dir/Loader_J.bin" />
+<file external="/mod_dir/Payload_J.bin" disc="/bin/Payload_J.bin" create="true" />
+
+(Optional)
+<file external="/mod_dir/lecode-JAP.bin" disc="/rel/lecode-JAP.bin" create="true" />
+<file external="/mod_dir/RMCJ01.gct" disc="/codes/RMCJ01.gct" create="true" />
