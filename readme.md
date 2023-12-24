@@ -4,6 +4,10 @@ Loader to apply "LE-CODE" and "Gecko Code", which are often used in the "CT Dist
 
 of Mario Kart Wii, without using main.dol.
 
+To allow the use of custom RELs, instead of default [LE-CODE Loader](https://mariokartwii.com/showthread.php?tid=1622),
+
+[Modified LE-CODE Loader](https://wiki.tockdom.com/wiki/Modified_LE-CODE_Loader) is used.
+
 There is no upper limit to the number of lines of 
 
 gecko code to which this loader can be applied.

@@ -4,6 +4,10 @@
 
 "LE-CODE"と"Gecko Code"をmain.dolを使わずに適用させるためのローダーです
 
+カスタムRELを使用できるようにするため、デフォルトの[LE-CODE Loader](https://mariokartwii.com/showthread.php?tid=1622)ではなく、
+
+[Modified LE-CODE Loader](https://wiki.tockdom.com/wiki/Modified_LE-CODE_Loader)が使用されています。
+
 一般的なGecko Codeハンドラとは違い、コード行数に上限はありません、しかし、ごくまれに
 
 一般的なGecko Codeハンドラでは動くのにこのローダーでは動かないGeckoコードがまれに存在します。
