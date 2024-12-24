@@ -1,5 +1,3 @@
-#define RMCP
-
 #ifdef RMCJ
 
 #define OSREPORT 0x801A24F0

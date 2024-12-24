@@ -1,5 +1,5 @@
 #include <ppc-asm.h>
-.set region, 'P'
+.set region, REGION_ID
 
 .global ICInvalidateRangeAsm
 .global getSystemHeap

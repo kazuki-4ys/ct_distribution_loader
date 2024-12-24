@@ -7,7 +7,7 @@
 
 .set already_ran_flag, 0x80000CF0
 
-.set region, 'P'
+.set region, REGION_ID
 
 .if (region == 'P')
     .set DVDOpen, 0x8015e2bc
