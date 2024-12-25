@@ -1,5 +1,3 @@
-#define RMCE
-
 #ifdef RMCJ
 
 #define ALREADY_LAUNCHED_FLAG 0x800001B8

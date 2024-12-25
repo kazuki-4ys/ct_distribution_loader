@@ -9,6 +9,8 @@
 #define MEMCPY 0x80005F34
 #define MEMCMP 0x8000F238
 #define LE_CODE_LOADER_INJECT_ADDR 0x801A6C50
+#define CT_CODE_LOADER_INJECT_ADDR 0x8004bfc8
+#define CT_CODE_TEXTURE_PATH 0x80244EA8
 
 #endif
 #ifdef RMCE
@@ -22,6 +24,8 @@
 #define MEMCPY 0x80005F34
 #define MEMCMP 0x8000e7b4
 #define LE_CODE_LOADER_INJECT_ADDR 0x801A6C90
+#define CT_CODE_LOADER_INJECT_ADDR 0x8004c008
+#define CT_CODE_TEXTURE_PATH 0x80244F08
 
 #endif
 #ifdef RMCP
@@ -35,6 +39,8 @@
 #define MEMCPY 0x80005F34
 #define MEMCMP 0x8000f314
 #define LE_CODE_LOADER_INJECT_ADDR 0x801A6D30
+#define CT_CODE_LOADER_INJECT_ADDR 0x8004c0a8
+#define CT_CODE_TEXTURE_PATH 0x80244F88
 
 #endif
 
@@ -54,8 +60,11 @@ const char *getString2(void);
 void *getString3(void);
 void *getString4(void);
 void *getString5(void);
+void *getString6(void);
 void *get_le_code_loader_hook(void);
 void *get_le_code_loader_hook_end(void);
+void *get_ct_code_loader_hook(void);
+void *get_ct_code_loader_hook_end(void);
 
 void u32ToBytes(unsigned char *mem, unsigned int val){
     *mem = (val >> 24);
@@ -134,6 +143,12 @@ void injectC2Patch(void *targetAddr, void *codeStart, void *codeEnd){
     ICInvalidateRange(targetAddr, 4);
 }
 
+void installCtCodeLoader(void){
+    void (*memcpy)(void*, void*, unsigned int) = (void*)MEMCPY;
+    injectC2Patch((void*)CT_CODE_LOADER_INJECT_ADDR, get_ct_code_loader_hook(), get_ct_code_loader_hook_end());
+    memcpy((void*)CT_CODE_TEXTURE_PATH, getString6(), 0x44);
+}
+
 void installLeCodeLoader(void){
     int (*DVDConvertPathToEntryNum)(const char*) = (void*)DVD_CONVERT_PATH_TO_ENTRY_NUM;
     if(DVDConvertPathToEntryNum(getString5()) < 0)return;
@@ -148,6 +163,7 @@ void __main(void){
     void (*DVDClose)(DVDFileInfo*) = (void*)DVD_CLOSE;
     void (*memcpy)(void*, void*, unsigned int) = (void*)MEMCPY;
     OSReport(getString0());
+    installCtCodeLoader();
     installLeCodeLoader();
     DVDFileInfo fi;
 	//int result = DVDFastOpen(DVDConvertPathToEntryNum("/codes/RMCJ01.gct"), &fi);
@@ -155,7 +171,7 @@ void __main(void){
     if(!result)return;
     
     void *gctFile = my_malloc(fi.length);
-    unsigned int *gctFileAddr = (void*)0x800041F0;//改変したcodehandler.binの機能により、0x800041F0にgctへのポインタを書き込むとgctコードが適用される
+    unsigned int *gctFileAddr = (void*)0x80005930;//改変したcodehandler.binの機能により、0x80005930にgctへのポインタを書き込むとgctコードが適用される
     *gctFileAddr = (unsigned int)gctFile;
     DVDReadPrio(&fi, gctFile, fi.length, 0, 2);
     ICInvalidateRange(gctFile, fi.length);

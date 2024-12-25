@@ -39,7 +39,7 @@
 .set r25,25; .set r26,26; .set r27,27; .set r28,28; .set r29,29
 .set r30,30; .set r31,31; .set f0,0; .set f2,2; .set f3,3
 
-.set gct_file_addr, 0x800041F0
+.set gct_file_addr, 0x80005930
 
 .globl _start
 

@@ -3,8 +3,8 @@ ROOT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
 
 #DISC_ID = RMCJ
 #DISC_ID = RMCE
-#DISC_ID = RMCP
-DISC_ID = RMCK
+DISC_ID = RMCP
+#DISC_ID = RMCK
 
 ifeq ($(DISC_ID), RMCE)
 ASM_DISC_ID_DEF = "REGION_ID=0x45"

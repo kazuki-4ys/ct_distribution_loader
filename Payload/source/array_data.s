@@ -7,6 +7,7 @@
 .global getString3
 .global getString4
 .global getString5
+.global getString6
 
 getString0:
     mflr r12
@@ -60,3 +61,8 @@ getString5:
 .else
     .abort
 .endif
+
+getString6:
+    mflr r12
+    bl blTrickCommonEnd
+    .incbin "C:/Users/Kazuki/Desktop/develop/Wii/ASM/ct_distribution_loader/Payload/source/ct_code_texture_path_patch.bin"

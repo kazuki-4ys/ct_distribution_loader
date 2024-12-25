@@ -1,5 +1,5 @@
 #include <ppc-asm.h>
-.set region, 'E'
+.set region, REGION_ID
 
 .macro defaultInstruction
     li r0, 97
