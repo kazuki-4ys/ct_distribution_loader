@@ -1,7 +1,7 @@
 PAL
 
 (Required)
-<memory offset="0x0016eacc" value="4be96c74" />
+<memory offset="0x8016eacc" value="4be96c74" />
 <memory offset="0x00005740" valuefile="/mod_dir/Loader_P.bin" />
 <file external="/mod_dir/Payload_P.bin" disc="/bin/Payload_P.bin" create="true" />
 

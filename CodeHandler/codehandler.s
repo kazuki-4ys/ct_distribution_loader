@@ -93,6 +93,7 @@ _start:
   lis r15, gct_file_addr@h
   ori r15, r15, gct_file_addr@l
   lwz r15, 0 (r15)
+  lwz r15, 0 (r15)
 
   ori r7, r31, cheatdata@l # set pointer for storing data (before the codelist)
 

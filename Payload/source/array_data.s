@@ -7,7 +7,8 @@
 .global getString3
 .global getString4
 .global getString5
-.global getString6
+.global getString7
+.global getString8
 
 getString0:
     mflr r12
@@ -62,7 +63,14 @@ getString5:
     .abort
 .endif
 
-getString6:
+getString7:
     mflr r12
     bl blTrickCommonEnd
-    .incbin "C:/Users/Kazuki/Desktop/develop/Wii/ASM/ct_distribution_loader/Payload/source/ct_code_texture_path_patch.bin"
+    .string "/Binaries/Code.pul"
+    .balign 4
+
+getString8:
+mflr r12
+    bl blTrickCommonEnd
+    .string "FATAL ERROR: Out of file memory"
+    .balign 4

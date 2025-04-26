@@ -1,56 +1,5 @@
-#ifdef RMCJ
-
-#define OSREPORT 0x801A24F0
-#define EGG_HEAP_ALLOC 0x80229734
-#define DVD_CONVERT_PATH_TO_ENTRY_NUM 0x8015DE6C
-#define DVD_FAST_OPEN 0x8015E174
-#define DVD_READ_PRIO 0x8015E754
-#define DVD_CLOSE 0x8015E488
-#define MEMCPY 0x80005F34
-#define MEMCMP 0x8000F238
-#define LE_CODE_LOADER_INJECT_ADDR 0x801A6C50
-#define CT_CODE_LOADER_INJECT_ADDR 0x8004bfc8
-#define CT_CODE_TEXTURE_PATH 0x80244EA8
-
-#endif
-#ifdef RMCE
-
-#define OSREPORT 0x801a2530
-#define EGG_HEAP_ALLOC 0x80229490
-#define DVD_CONVERT_PATH_TO_ENTRY_NUM 0x8015deac
-#define DVD_FAST_OPEN 0x8015e1b4
-#define DVD_READ_PRIO 0x8015e794
-#define DVD_CLOSE 0x8015e4c8
-#define MEMCPY 0x80005F34
-#define MEMCMP 0x8000e7b4
-#define LE_CODE_LOADER_INJECT_ADDR 0x801A6C90
-#define CT_CODE_LOADER_INJECT_ADDR 0x8004c008
-#define CT_CODE_TEXTURE_PATH 0x80244F08
-
-#endif
-#ifdef RMCP
-
-#define OSREPORT 0x801a25d0
-#define EGG_HEAP_ALLOC 0x80229814
-#define DVD_CONVERT_PATH_TO_ENTRY_NUM 0x8015df4c
-#define DVD_FAST_OPEN 0x8015e254
-#define DVD_READ_PRIO 0x8015e834
-#define DVD_CLOSE 0x8015e568
-#define MEMCPY 0x80005F34
-#define MEMCMP 0x8000f314
-#define LE_CODE_LOADER_INJECT_ADDR 0x801A6D30
-#define CT_CODE_LOADER_INJECT_ADDR 0x8004c0a8
-#define CT_CODE_TEXTURE_PATH 0x80244F88
-
-#endif
-
-typedef struct{
-    unsigned char unk0[0x34];
-    unsigned int length;
-    //0x38
-    unsigned char unk1[4];
-    //全部で0x3Cバイト
-}DVDFileInfo;
+#include "common.h"
+#include "kamek_loader.h"
 
 void *getSystemHeap(void);
 void ICInvalidateRangeAsm(void*, unsigned int);
@@ -60,11 +9,8 @@ const char *getString2(void);
 void *getString3(void);
 void *getString4(void);
 void *getString5(void);
-void *getString6(void);
-void *get_le_code_loader_hook(void);
-void *get_le_code_loader_hook_end(void);
-void *get_ct_code_loader_hook(void);
-void *get_ct_code_loader_hook_end(void);
+
+void *getPulsar1xLoaderEntryAsmPtr(void);
 
 void u32ToBytes(unsigned char *mem, unsigned int val){
     *mem = (val >> 24);
@@ -94,6 +40,30 @@ void *my_malloc(unsigned int length){
         requsetLength = ((requsetLength >> 5) + 1) << 5;
     }
     return Egg__Heap__Alloc(requsetLength, 0x20, getSystemHeap());
+}
+
+BOOL isDvdFileExsist(const char *path){
+    int (*DVDFastOpen)(int, DVDFileInfo*) = (void*)DVD_FAST_OPEN;
+    int (*DVDConvertPathToEntryNum)(const char*) = (void*)DVD_CONVERT_PATH_TO_ENTRY_NUM;
+    void (*DVDClose)(DVDFileInfo*) = (void*)DVD_CLOSE;
+    DVDFileInfo fi;
+    int result = DVDFastOpen(DVDConvertPathToEntryNum(path), &fi);
+    if(!result)return false;
+    unsigned int fileSize = fi.length;
+    DVDClose(&fi);
+    if(fileSize)return true;
+    return false;
+}
+
+void allocMyGlobalVar(void){
+    void *p = my_malloc(sizeof(myGlobalVar));
+    void **tmp = (void**)((void*)0x80005930);
+    *tmp = p;
+}
+
+myGlobalVar *getMyGlobalVar(void){
+    myGlobalVar **ptr = (myGlobalVar**)((void*)0x80005930);
+    return *ptr;
 }
 
 unsigned int makeBranchInstructionByAddrDelta(int addrDelta){//アドレス差分からbranch命令作成
@@ -135,24 +105,28 @@ void ocarinaPatch(void *offset, void *value, unsigned int valueLength){
     injectBranch(offset, searchResult);
 }
 
-void injectC2Patch(void *targetAddr, void *codeStart, void *codeEnd){
-    //inject code like C2 code type
-    u32ToBytes((unsigned char*)codeEnd - 4, makeBranchInstructionByAddrDelta((unsigned int)targetAddr + 4 - ((unsigned int)codeEnd - 4)));
-    u32ToBytes(targetAddr, makeBranchInstructionByAddrDelta(codeStart - targetAddr));
-    ICInvalidateRange((void*)((unsigned int)codeEnd - 4), 4);
-    ICInvalidateRange(targetAddr, 4);
+void installGeckoCodeHandler(void){
+    int (*DVDFastOpen)(int, DVDFileInfo*) = (void*)DVD_FAST_OPEN;
+    myGlobalVar *g = getMyGlobalVar();
+    DVDFileInfo fi;
+	//int result = DVDFastOpen(DVDConvertPathToEntryNum("/codes/RMCJ01.gct"), &fi);
+    int result = DVDFastOpen(DVDConvertPathToEntryNum(getString2()), &fi);
+    if(!result)return;
+    g->gctFile = my_malloc(fi.length);
+    DVDReadPrio(&fi, g->gctFile, fi.length, 0, 2);
+    ICInvalidateRange(g->gctFile, fi.length);
+    DVDClose(&fi);
+
+    memcpy((void*)0x80001800, getString3(), 0xB38);//cppy modified codehandler.bin to 0x80001800
+    ICInvalidateRange((void*)0x80001800, 0xB38);
+    //unsigned char viHookValue[16] = {0x7C, 0xE3, 0x3B, 0x78, 0x38, 0x87, 0x00, 0x34, 0x38, 0xA7, 0x00, 0x38, 0x38, 0xC7, 0x00, 0x4C};
+    ocarinaPatch((void*)0x800018A8, getString4(), 16);//vi hook 
 }
 
-void installCtCodeLoader(void){
-    void (*memcpy)(void*, void*, unsigned int) = (void*)MEMCPY;
-    injectC2Patch((void*)CT_CODE_LOADER_INJECT_ADDR, get_ct_code_loader_hook(), get_ct_code_loader_hook_end());
-    memcpy((void*)CT_CODE_TEXTURE_PATH, getString6(), 0x44);
-}
-
-void installLeCodeLoader(void){
-    int (*DVDConvertPathToEntryNum)(const char*) = (void*)DVD_CONVERT_PATH_TO_ENTRY_NUM;
-    if(DVDConvertPathToEntryNum(getString5()) < 0)return;
-    injectC2Patch((void*)LE_CODE_LOADER_INJECT_ADDR, get_le_code_loader_hook(), get_le_code_loader_hook_end());
+void installPulsar1xLoader(void){
+    injectBranch(getPulsar1xLoaderEntryAsmPtr(), (void*)PULSAR_LOADER_REL_INJECT);//RMCJ ONLY!!!!!
+    pulsar1xLoaderEntry();
+    return;
 }
 
 void __main(void){
@@ -163,22 +137,11 @@ void __main(void){
     void (*DVDClose)(DVDFileInfo*) = (void*)DVD_CLOSE;
     void (*memcpy)(void*, void*, unsigned int) = (void*)MEMCPY;
     OSReport(getString0());
-    installCtCodeLoader();
-    installLeCodeLoader();
-    DVDFileInfo fi;
-	//int result = DVDFastOpen(DVDConvertPathToEntryNum("/codes/RMCJ01.gct"), &fi);
-    int result = DVDFastOpen(DVDConvertPathToEntryNum(getString2()), &fi);
-    if(!result)return;
-    
-    void *gctFile = my_malloc(fi.length);
-    unsigned int *gctFileAddr = (void*)0x80005930;//改変したcodehandler.binの機能により、0x80005930にgctへのポインタを書き込むとgctコードが適用される
-    *gctFileAddr = (unsigned int)gctFile;
-    DVDReadPrio(&fi, gctFile, fi.length, 0, 2);
-    ICInvalidateRange(gctFile, fi.length);
-    DVDClose(&fi);
-
-    memcpy((void*)0x80001800, getString3(), 0xB40);//cppy modified codehandler.bin to 0x80001800
-    ICInvalidateRange((void*)0x80001800, 0xB40);
-    //unsigned char viHookValue[16] = {0x7C, 0xE3, 0x3B, 0x78, 0x38, 0x87, 0x00, 0x34, 0x38, 0xA7, 0x00, 0x38, 0x38, 0xC7, 0x00, 0x4C};
-    ocarinaPatch((void*)0x800018A8, getString4(), 16);//vi hook 
+    allocMyGlobalVar();
+    myGlobalVar *g = getMyGlobalVar();
+    g->codePulBuf = nullptr;
+    g->loadKamekBinaryFromDiscFileLength = 0;
+    g->loadKamekBinarytext = 0;
+    if(isDvdFileExsist(getString7()))installPulsar1xLoader();
+    if(isDvdFileExsist(getString2()))installPulsar1xLoader();
 }
