@@ -9,6 +9,8 @@
 #define MEMCPY 0x80005F34
 #define MEMCMP 0x8000F238
 #define LE_CODE_LOADER_INJECT_ADDR 0x801A6C50
+#define IC_INVALIDATE_RANGE 0x801a1630
+#define DC_FLUSH_RANGE 0x801a154c
 
 #endif
 #ifdef RMCE
@@ -22,6 +24,8 @@
 #define MEMCPY 0x80005F34
 #define MEMCMP 0x8000e7b4
 #define LE_CODE_LOADER_INJECT_ADDR 0x801A6C90
+#define IC_INVALIDATE_RANGE 0x801a1670
+#define DC_FLUSH_RANGE 0x801a158c
 
 #endif
 #ifdef RMCP
@@ -35,6 +39,8 @@
 #define MEMCPY 0x80005F34
 #define MEMCMP 0x8000f314
 #define LE_CODE_LOADER_INJECT_ADDR 0x801A6D30
+#define IC_INVALIDATE_RANGE 0x801a1710
+#define DC_FLUSH_RANGE 0x801a162c
 
 #endif
 
@@ -47,7 +53,6 @@ typedef struct{
 }DVDFileInfo;
 
 void *getSystemHeap(void);
-void ICInvalidateRangeAsm(void*, unsigned int);
 const char *getString0(void);
 unsigned char *getString1(void);
 const char *getString2(void);
@@ -64,26 +69,25 @@ void u32ToBytes(unsigned char *mem, unsigned int val){
     *(mem + 3) = (val & 0xFF);
 }
 
-void ICInvalidateRange(void *_start, unsigned int length){
-    //CPUのキャッシュメモリを更新し、過去にキャッシュされたコードの実行を防ぐ？
-    //_start とlengthを0x20でアラインメント alignment for 0x20
-    unsigned int start = (unsigned int)_start;
-    unsigned int end = start + length;
-    if(end & 0x1F){
-        end = ((end >> 5) + 1) << 5;
+void clearDC_IC_Cache(void *ptr, unsigned int length){
+    //ICInvalidateRangeだけでなく、DCFlushRangeも実行するように変更
+    void (*ICInvalidateRange)(void*, unsigned int) = (void*)IC_INVALIDATE_RANGE;
+    void (*DCFlushRange)(void*, unsigned int) = (void*)DC_FLUSH_RANGE;
+    ICInvalidateRange(ptr, length);
+    DCFlushRange(ptr, length);
+}
+
+unsigned int roundup0x20(unsigned int src){
+    if(src & 0x1F){//0x20でアラインメント alignment for 0x20
+        src = ((src >> 5) + 1) << 5;
     }
-    if(start & 0x1F){
-        start = (start >> 5) << 5;
-    }
-    ICInvalidateRangeAsm((void*)start, end - start);
+    return src;
 }
 
 void *my_malloc(unsigned int length){
     void* (*Egg__Heap__Alloc)(unsigned int, unsigned int, void*) = (void*)EGG_HEAP_ALLOC;
     unsigned int requsetLength = length;
-    if(requsetLength & 0x1F){//0x20でアラインメント alignment for 0x20
-        requsetLength = ((requsetLength >> 5) + 1) << 5;
-    }
+    requsetLength = roundup0x20(requsetLength);
     return Egg__Heap__Alloc(requsetLength, 0x20, getSystemHeap());
 }
 
@@ -100,10 +104,10 @@ unsigned int makeBranchInstructionByAddrDelta(int addrDelta){//アドレス差�
 
 void injectBranch(void *target, void *src){
     //srcからtargetへジャンプ
-    //branch to src from target
+    //branch src->target
     unsigned int instruction = makeBranchInstructionByAddrDelta((int)target - (int)src);
     u32ToBytes((void*)src, instruction);
-    ICInvalidateRange((void*)src, 4);
+    clearDC_IC_Cache((void*)src, 4);
 }
 
 void* searchForOcarinaPatch(void *start, void *value, unsigned int valueLength){
@@ -130,8 +134,8 @@ void injectC2Patch(void *targetAddr, void *codeStart, void *codeEnd){
     //inject code like C2 code type
     u32ToBytes((unsigned char*)codeEnd - 4, makeBranchInstructionByAddrDelta((unsigned int)targetAddr + 4 - ((unsigned int)codeEnd - 4)));
     u32ToBytes(targetAddr, makeBranchInstructionByAddrDelta(codeStart - targetAddr));
-    ICInvalidateRange((void*)((unsigned int)codeEnd - 4), 4);
-    ICInvalidateRange(targetAddr, 4);
+    clearDC_IC_Cache((void*)((unsigned int)codeEnd - 4), 4);
+    clearDC_IC_Cache(targetAddr, 4);
 }
 
 void installLeCodeLoader(void){
@@ -154,15 +158,15 @@ void __main(void){
     int result = DVDFastOpen(DVDConvertPathToEntryNum(getString2()), &fi);
     if(!result)return;
     
-    void *gctFile = my_malloc(fi.length);
-    unsigned int *gctFileAddr = (void*)0x800041F0;//改変したcodehandler.binの機能により、0x800041F0にgctへのポインタを書き込むとgctコードが適用される
+    void *gctFile = my_malloc(roundup0x20(fi.length));
+    unsigned int *gctFileAddr = (void*)0x80005640;//改変したcodehandler.binの機能により、0x80005640にgctへのポインタを書き込むとgctコードが適用される
     *gctFileAddr = (unsigned int)gctFile;
-    DVDReadPrio(&fi, gctFile, fi.length, 0, 2);
-    ICInvalidateRange(gctFile, fi.length);
+    DVDReadPrio(&fi, gctFile, roundup0x20(fi.length), 0, 2);
+    clearDC_IC_Cache(gctFile, roundup0x20(fi.length));
     DVDClose(&fi);
 
     memcpy((void*)0x80001800, getString3(), 0xB40);//cppy modified codehandler.bin to 0x80001800
-    ICInvalidateRange((void*)0x80001800, 0xB40);
+    clearDC_IC_Cache((void*)0x80001800, 0xB40);
     //unsigned char viHookValue[16] = {0x7C, 0xE3, 0x3B, 0x78, 0x38, 0x87, 0x00, 0x34, 0x38, 0xA7, 0x00, 0x38, 0x38, 0xC7, 0x00, 0x4C};
     ocarinaPatch((void*)0x800018A8, getString4(), 16);//vi hook 
 }
